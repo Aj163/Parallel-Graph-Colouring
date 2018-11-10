@@ -1,26 +1,26 @@
 #include <bits/stdc++.h>
+#include <cuda.h>
 using namespace std;
 
 class Graph {
 
-private:
+public:
+
 	int nodeCount, edgeCount;
 	int maxDegree;
-	vector<int> *adjacencyList;
+	int *adjacencyList, *adjacencyListPointers;
 
 public:
-	// Graph(int n)
-	
-	// {
-	// 	this->nodeCount = n;
-	// 	this->adjacencyList = new vector<int>(n);
-	// }
 
-	__host__ __device__ int getNodeCount() {
+	int getNodeCount() {
 		return nodeCount;
 	}
 
-	__host__ __device__ int getMaxDegree() {
+	int getEdgeCount() {
+		return edgeCount;
+	}
+
+	int getMaxDegree() {
 		return maxDegree;
 	}
 
@@ -28,25 +28,37 @@ public:
 
 		int u, v;
 		cin >> nodeCount >> edgeCount;
-		adjacencyList = new vector<int>[nodeCount];
+
+		// Use vector of vectors temporarily to input graph
+		vector<int> adj[nodeCount];
 		for (int i = 0; i < edgeCount; i++) {
 			cin >> u >> v;
-			adjacencyList[u].push_back(v);
-			adjacencyList[v].push_back(u);
+			adj[u].push_back(v);
+			adj[v].push_back(u);
 		}
 
+		// Copy into compressed adjacency List
+		adjacencyListPointers = new int[nodeCount +1];
+		adjacencyList = new int[2 * edgeCount +1];
+		int pos = 0;
+		for(int i=0; i<nodeCount; i++) {
+			adjacencyListPointers[i] = pos;
+			for(int node : adj[i])
+				adjacencyList[pos++] = node;
+		}
+		adjacencyListPointers[nodeCount] = pos;
+
+		// Calculate max degree
 		maxDegree = INT_MAX;
 		for(int i=0; i<nodeCount; i++)
-			maxDegree = max(maxDegree, (int)adjacencyList[i].size());
+			maxDegree = max(maxDegree, (int)adj[i].size());
 	}
 
-	__host__ __device__ vector<int> getAdjacencyList(int node) {
-		// if(node < nodeCount)
-			return adjacencyList[node];
-		// return NULL;
+	int *getAdjacencyList(int node) {
+		return adjacencyList;
 	}
 
-	__host__ __device__ ~Graph() {
-		delete[] adjacencyList;
+	int *getAdjacencyListPointers(int node) {
+		return adjacencyListPointers;
 	}
 };
