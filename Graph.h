@@ -49,7 +49,7 @@ public:
 		adjacencyListPointers[nodeCount] = pos;
 
 		// Calculate max degree
-		maxDegree = INT_MAX;
+		maxDegree = INT_MIN;
 		for(int i=0; i<nodeCount; i++)
 			maxDegree = max(maxDegree, (int)adj[i].size());
 	}

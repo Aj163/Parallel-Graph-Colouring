@@ -29,7 +29,7 @@ __global__ void assignColoursKernel(Graph *graph, int nodeCount, int edgeCount,
         if (forbidden[colour] == false) {
             // TODO: Check if needs to be synced
             device_colours[node] = colour;
-            break;
+            return;
         }
     }
 }
@@ -76,15 +76,15 @@ bool detectConflicts(Graph *graph, int nodeCount, int edgeCount,
         (graph, nodeCount, edgeCount, device_colours, device_conflicts, device_conflictExists);
 
     // Copy device_conflictExists to conflictExists and return
-    cudaMemcpy(device_conflictExists, conflictExists, sizeof(bool), cudaMemcpyDeviceToHost);
+    cudaMemcpy(conflictExists, device_conflictExists, sizeof(bool), cudaMemcpyDeviceToHost);
 
-    return conflictExists;
+    return *conflictExists;
 }
 
 int *graphColouring(Graph *graph, int nodeCount, int edgeCount, int maxDegree) {
 
     // Boolean array for conflicts
-    bool * host_conflicts = new bool[nodeCount];
+    bool *host_conflicts = new bool[nodeCount];
     int *host_colours = new int[nodeCount];
     int *device_colours;
     bool *device_conflicts;
@@ -92,12 +92,12 @@ int *graphColouring(Graph *graph, int nodeCount, int edgeCount, int maxDegree) {
     // Initialize all nodes to invalid colour (0)
     memset(host_colours, 0, sizeof(int) * nodeCount);
     // Initialize all nodes into conflict
-    memset(host_conflicts, 1, sizeof(int) * nodeCount);
+    memset(host_conflicts, true, sizeof(bool) * nodeCount);
 
     cudaMalloc((void**)&device_colours, sizeof(int) * nodeCount);
     cudaMemcpy(device_colours, host_colours, sizeof(int) * nodeCount, cudaMemcpyHostToDevice);
     cudaMalloc((void**)&device_conflicts, sizeof(bool) * nodeCount);
-    cudaMemcpy(device_conflicts, host_conflicts, sizeof(int) * nodeCount, cudaMemcpyHostToDevice);
+    cudaMemcpy(device_conflicts, host_conflicts, sizeof(bool) * nodeCount, cudaMemcpyHostToDevice);
 
     do {
         assignColours(graph, nodeCount, edgeCount, device_colours, device_conflicts, maxDegree);
@@ -138,12 +138,14 @@ int main() {
     // Update the pointer to this, in d_graph
     cudaMemcpy(&(d_graph->adjacencyListPointers), &adjacencyListPointers, sizeof(int*), cudaMemcpyHostToDevice);
 
-    cout << "Hi\n";
     int *colouring = graphColouring(d_graph, nodeCount, edgeCount, maxDegree);
 
-    for(int i=0; i<nodeCount; i++)
-        cout << colouring[i] << " ";
-    cout << endl;
+    int totalColours = INT_MIN;
+    for(int i=0; i<nodeCount; i++){
+        totalColours = max(totalColours, colouring[i]);
+        printf("Node %d ==> Colour %d\n", i, colouring[i]);
+    }
+    printf("\nApproximate number of colours required ==> %d\n", totalColours);
 
     // Free all memory
     delete[] colouring;

@@ -1,3 +1,4 @@
 testcases/
+.vscode/
 
 *.out
