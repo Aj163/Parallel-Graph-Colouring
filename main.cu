@@ -143,9 +143,10 @@ int main() {
     int totalColours = INT_MIN;
     for(int i=0; i<nodeCount; i++){
         totalColours = max(totalColours, colouring[i]);
-        printf("Node %d ==> Colour %d\n", i, colouring[i]);
+        printf("%d ", colouring[i]);
     }
-    printf("\nApproximate number of colours required ==> %d\n", totalColours);
+    cout << endl;
+    // printf("\nApproximate number of colours required ==> %d\n", totalColours);
 
     // Free all memory
     delete[] colouring;

@@ -8,6 +8,7 @@ int main()
 
     cin >> n >> m;
     if (m < n - 1 || m > n * 1ll * (n - 1) / 2) {
+        cout << "Invalid parameters\n";
         // Can't be a simple connected graph
         return 0;
     }
@@ -15,7 +16,7 @@ int main()
     cout << n << " " << m << endl;
 
     int nodes[n + 1];
-    pair<int, int> edges[m + 1];
+    pair<int, int> *edges = new pair<int, int>[m + 1];
     map<pair<int, int>, bool> edgeExists;
 
     for (int i = 0; i < n; i++) {
