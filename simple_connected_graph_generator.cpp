@@ -1,8 +1,14 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-int main()
+int main(int argc, char *argv[])
 {
+    if (argc < 2)
+    {
+        cout << "Usage: " << argv[0] << " <graph_output_file>\n";
+        return 0;
+    }
+
     int n, m;
     int x, y;
 
@@ -13,6 +19,7 @@ int main()
         return 0;
     }
 
+    freopen(argv[1], "w", stdout);
     cout << n << " " << m << endl;
 
     int nodes[n + 1];

@@ -1,5 +1,4 @@
 #include <bits/stdc++.h>
-#include <cuda.h>
 using namespace std;
 
 class Graph {
@@ -30,7 +29,7 @@ public:
 		cin >> nodeCount >> edgeCount;
 
 		// Use vector of vectors temporarily to input graph
-		vector<int> adj[nodeCount];
+		vector<int> *adj = new vector<int>[nodeCount];
 		for (int i = 0; i < edgeCount; i++) {
 			cin >> u >> v;
 			adj[u].push_back(v);
@@ -52,6 +51,8 @@ public:
 		maxDegree = INT_MIN;
 		for(int i=0; i<nodeCount; i++)
 			maxDegree = max(maxDegree, (int)adj[i].size());
+
+		delete[] adj;
 	}
 
 	int *getAdjacencyList(int node) {
