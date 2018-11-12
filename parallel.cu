@@ -78,7 +78,7 @@ void assignColours(Graph *graph, int nodeCount,
 
     // Launch assignColoursKernel with nodeCount number of threads
     assignColoursKernel<<<CEIL(nodeCount, MAX_THREAD_COUNT), MAX_THREAD_COUNT>>>(graph, nodeCount, device_colours, device_conflicts, maxDegree);
-    cudaThreadSynchronize();
+    cudaDeviceSynchronize();
 }
 
 __global__ void detectConflictsKernel(Graph *graph, int nodeCount,
@@ -115,7 +115,7 @@ bool detectConflicts(Graph *graph, int nodeCount,
 
     //Launch detectConflictsKernel with nodeCount number of threads
     detectConflictsKernel<<<CEIL(nodeCount, MAX_THREAD_COUNT), MAX_THREAD_COUNT>>>(graph, nodeCount, device_colours, device_conflicts, device_conflictExists);
-    cudaThreadSynchronize();
+    cudaDeviceSynchronize();
 
     // Copy device_conflictExists to conflictExists and return
     catchCudaError(cudaMemcpy(&conflictExists, device_conflictExists, sizeof(bool), cudaMemcpyDeviceToHost), "Memcpy6");
