@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
     ifstream colour(argv[2]);
 
     graph >> n >> m;
-    vector<int> g[n];
+    vector<int> *g = new vector<int>[n];
     
     for(int i=0; i<n; i++) {
         graph >> u >> v;
@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
         g[v].push_back(u);
     }
 
-    int colours[n];
+    int *colours = new int[n];
     for(int i=0; i<n; i++) {
         colour >> colours[i];
         if(colours[i] <= 0) {
@@ -47,5 +47,6 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
+    delete[] g, colours;
     cout << "AC\nNumber of colours used : " << C << endl;
 }
