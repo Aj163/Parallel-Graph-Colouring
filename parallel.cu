@@ -49,19 +49,20 @@ __global__ void assignColoursKernel(Graph *graph, int nodeCount,
 
     int maxColours = maxDegree + 1;
     // Create forbidden array of size maxDegree
-    // TODO: Memory optimization using bitmask
-    bool *forbidden = new bool[maxColours + 1];
-    memset(forbidden, false, sizeof(bool) * (maxColours + 1));
+    int *forbidden = new int[CEIL(maxColours + 1, 32)];
+    memset(forbidden, 0, sizeof(int) * (maxColours + 1));
 
     for (int i = graph->adjacencyListPointers[node]; i < graph->adjacencyListPointers[node + 1]; i++)
     {
         int neighbour = graph->adjacencyList[i];
-        forbidden[device_colours[neighbour]] = true;
+        int ind = device_colours[neighbour] % 32;
+        forbidden[device_colours[neighbour] / 32] |= (1<<ind);
     }
 
     for (int colour = 1; colour <= maxColours; ++colour)
     {
-        if (forbidden[colour] == false)
+        int ind = colour % 32;
+        if ((forbidden[colour / 32] & (1<<ind)) == 0)
         {
             device_colours[node] = colour;
             break;
@@ -77,6 +78,7 @@ void assignColours(Graph *graph, int nodeCount,
 
     // Launch assignColoursKernel with nodeCount number of threads
     assignColoursKernel<<<CEIL(nodeCount, MAX_THREAD_COUNT), MAX_THREAD_COUNT>>>(graph, nodeCount, device_colours, device_conflicts, maxDegree);
+    cudaThreadSynchronize();
 }
 
 __global__ void detectConflictsKernel(Graph *graph, int nodeCount,
@@ -108,14 +110,15 @@ bool detectConflicts(Graph *graph, int nodeCount,
     bool *device_conflictExists;
     bool conflictExists = false;
 
-    catchCudaError(cudaMalloc((void **)&device_conflictExists, sizeof(bool)), "Malloc");
-    catchCudaError(cudaMemcpy(device_conflictExists, &conflictExists, sizeof(bool), cudaMemcpyHostToDevice), "Memcpy");
+    catchCudaError(cudaMalloc((void **)&device_conflictExists, sizeof(bool)), "Malloc1");
+    catchCudaError(cudaMemcpy(device_conflictExists, &conflictExists, sizeof(bool), cudaMemcpyHostToDevice), "Memcpy7");
 
     //Launch detectConflictsKernel with nodeCount number of threads
     detectConflictsKernel<<<CEIL(nodeCount, MAX_THREAD_COUNT), MAX_THREAD_COUNT>>>(graph, nodeCount, device_colours, device_conflicts, device_conflictExists);
+    cudaThreadSynchronize();
 
     // Copy device_conflictExists to conflictExists and return
-    catchCudaError(cudaMemcpy(&conflictExists, device_conflictExists, sizeof(bool), cudaMemcpyDeviceToHost), "Memcpy");
+    catchCudaError(cudaMemcpy(&conflictExists, device_conflictExists, sizeof(bool), cudaMemcpyDeviceToHost), "Memcpy6");
     
     // Free device memory
     catchCudaError(cudaFree(device_conflictExists), "Free");
@@ -137,10 +140,10 @@ int *graphColouring(Graph *graph, int nodeCount, int maxDegree)
     // Initialize all nodes into conflict
     memset(host_conflicts, true, sizeof(bool) * nodeCount);
 
-    catchCudaError(cudaMalloc((void **)&device_colours, sizeof(int) * nodeCount), "Malloc");
-    catchCudaError(cudaMemcpy(device_colours, host_colours, sizeof(int) * nodeCount, cudaMemcpyHostToDevice), "Memcpy");
-    catchCudaError(cudaMalloc((void **)&device_conflicts, sizeof(bool) * nodeCount), "Malloc");
-    catchCudaError(cudaMemcpy(device_conflicts, host_conflicts, sizeof(bool) * nodeCount, cudaMemcpyHostToDevice), "Memcpy");
+    catchCudaError(cudaMalloc((void **)&device_colours, sizeof(int) * nodeCount), "Malloc2");
+    catchCudaError(cudaMemcpy(device_colours, host_colours, sizeof(int) * nodeCount, cudaMemcpyHostToDevice), "Memcpy1");
+    catchCudaError(cudaMalloc((void **)&device_conflicts, sizeof(bool) * nodeCount), "Malloc3");
+    catchCudaError(cudaMemcpy(device_conflicts, host_conflicts, sizeof(bool) * nodeCount, cudaMemcpyHostToDevice), "Memcpy2");
 
     // Timer
     cudaEvent_t device_start, device_end;
@@ -160,7 +163,7 @@ int *graphColouring(Graph *graph, int nodeCount, int maxDegree)
 
 
     // Copy colours to host and return
-    catchCudaError(cudaMemcpy(host_colours, device_colours, sizeof(int) * nodeCount, cudaMemcpyDeviceToHost), "Memcpy");
+    catchCudaError(cudaMemcpy(host_colours, device_colours, sizeof(int) * nodeCount, cudaMemcpyDeviceToHost), "Memcpy3");
 
     delete[] host_conflicts;
     catchCudaError(cudaFree(device_colours), "Free");
@@ -187,26 +190,26 @@ int main(int argc, char *argv[])
     Graph *host_graph = new Graph();
     Graph *device_graph;
 
-    catchCudaError(cudaMalloc((void **)&device_graph, sizeof(Graph)), "Malloc");
+    catchCudaError(cudaMalloc((void **)&device_graph, sizeof(Graph)), "Malloc4");
     host_graph->readGraph();
 
     int nodeCount = host_graph->getNodeCount();
     int edgeCount = host_graph->getEdgeCount();
     int maxDegree = host_graph->getMaxDegree();
-    catchCudaError(cudaMemcpy(device_graph, host_graph, sizeof(Graph), cudaMemcpyHostToDevice), "Memcpy");
+    catchCudaError(cudaMemcpy(device_graph, host_graph, sizeof(Graph), cudaMemcpyHostToDevice), "Memcpy4");
 
     // Copy Adjancency List to device
     int *adjacencyList;
     // Alocate device memory and copy
-    catchCudaError(cudaMalloc((void **)&adjacencyList, sizeof(int) * (2 * edgeCount + 1)), "Malloc");
+    catchCudaError(cudaMalloc((void **)&adjacencyList, sizeof(int) * (2 * edgeCount + 1)), "Malloc5");
     catchCudaError(cudaMemcpy(adjacencyList, host_graph->adjacencyList, sizeof(int) * (2 * edgeCount + 1), cudaMemcpyHostToDevice), "Memcpy");
     // Update the pointer to this, in device_graph
-    catchCudaError(cudaMemcpy(&(device_graph->adjacencyList), &adjacencyList, sizeof(int *), cudaMemcpyHostToDevice), "Memcpy");
+    catchCudaError(cudaMemcpy(&(device_graph->adjacencyList), &adjacencyList, sizeof(int *), cudaMemcpyHostToDevice), "Memcpy5");
 
     // Copy Adjancency List Pointers to device
     int *adjacencyListPointers;
     // Alocate device memory and copy
-    catchCudaError(cudaMalloc((void **)&adjacencyListPointers, sizeof(int) * (nodeCount + 1)), "Malloc");
+    catchCudaError(cudaMalloc((void **)&adjacencyListPointers, sizeof(int) * (nodeCount + 1)), "Malloc6");
     catchCudaError(cudaMemcpy(adjacencyListPointers, host_graph->adjacencyListPointers, sizeof(int) * (nodeCount + 1), cudaMemcpyHostToDevice), "Memcpy");
     // Update the pointer to this, in device_graph
     catchCudaError(cudaMemcpy(&(device_graph->adjacencyListPointers), &adjacencyListPointers, sizeof(int *), cudaMemcpyHostToDevice), "Memcpy");
