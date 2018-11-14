@@ -50,7 +50,12 @@ __global__ void assignColoursKernel(Graph *graph, int nodeCount,
     int maxColours = maxDegree + 1;
     // Create forbidden array of size maxDegree
     int *forbidden = new int[CEIL(maxColours + 1, 32)];
-    memset(forbidden, 0, sizeof(int) * (maxColours + 1));
+    if(forbidden == NULL) 
+    {
+        cout << "Cuda Memory Full\n";
+        return;
+    }
+    memset(forbidden, 0, sizeof(int) * CEIL(maxColours + 1, 32));
 
     for (int i = graph->adjacencyListPointers[node]; i < graph->adjacencyListPointers[node + 1]; i++)
     {
